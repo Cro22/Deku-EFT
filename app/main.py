@@ -1,16 +1,32 @@
-from services.etfs import get_etf_tickers
-from services.stocks import build_metrics_prompt, calculate_metrics
-from services.gpt import ask_gpt
-from services.storage import save_analysis
-from services.messenger import send_telegram_message
+from app.services.etfs import get_etf_tickers
+from app.services.stocks import build_metrics_prompt
+from app.services.news import fetch_headlines, build_news_prompt
+from app.services.gpt import ask_gpt
+from app.services.analysis_storage import save_etf_analysis
+from app.services.messenger import send_telegram_message
 
 def main():
+    # 1. Load tickers from DB
     tickers = get_etf_tickers()
-    prompt = build_metrics_prompt(tickers)
-    gpt_response = ask_gpt(prompt)
 
-    save_analysis(tickers, gpt_response)
-    send_telegram_message(f"📈 GPT ETF Metrics Analysis:\n\n{gpt_response}")
+    # 2. Build quantitative prompt
+    q_prompt = build_metrics_prompt(tickers)
+
+    # 3. Fetch news headlines and build qualitative prompt
+    articles = fetch_headlines(tickers)
+    n_prompt = build_news_prompt(articles)
+
+    # 4. Combine prompts
+    full_prompt = f"{q_prompt}\n\n{n_prompt}"
+
+    # 5. Ask GPT
+    analysis = ask_gpt(full_prompt)
+
+    # 6. Persist analysis and metrics
+    save_etf_analysis(tickers, analysis)
+
+    # 7. Notify via Telegram
+    send_telegram_message(f"📈 Combined ETF Analysis:\n\n{analysis}")
 
 if __name__ == "__main__":
     main()

@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   db:
-    image: public.ecr.aws/docker/library/postgres:17rc1
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -11,19 +9,29 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_etf:/var/lib/postgresql/data
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "pg_isready -U ${DB_USER} -d ${DB_NAME} -h localhost -p ${DB_PORT}"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build: .
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
     volumes:
       - ./app:/app
+    entrypoint: [ "/entrypoint.sh" ]
 
 volumes:
-  postgres_data:
+  postgres_data_etf:
