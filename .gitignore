@@ -24,3 +24,4 @@ gen
 
 #Proyect Files
 .env
+__pycache__/
